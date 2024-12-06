@@ -1,0 +1,18 @@
+INFO:     Will watch for changes in these directories: ['/workspace/School-Management/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+INFO:     Started reloader process [3864] using WatchFiles
+INFO:     Started server process [3866]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Attempting to authenticate user: admin@school.com
+Found user: admin@school.com, role: SUPER_ADMIN, is_active: true
+WARNING:passlib.handlers.bcrypt:(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/openhands/poetry/openhands-ai-5O4_aCHf-py3.12/lib/python3.12/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO:app.core.middleware:Path: /api/v1/auth/login Method: POST Status: 200 Duration: 0.764s
+INFO:     127.0.0.1:60794 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:app.core.middleware:Path: /api/v1/auth/me Method: GET Status: 200 Duration: 0.013s
+INFO:     127.0.0.1:41162 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
