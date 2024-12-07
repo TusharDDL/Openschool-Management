@@ -1,4 +1,4 @@
-#!/home/tusharlinux/Desktop/SchoolManagement/School-Management/School-Management/backend/venv/bin/python3
+#!/workspace/School-Management2/backend/venv/bin/python3.12
 
 import sys
 import json
