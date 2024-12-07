@@ -15,3 +15,5 @@ class User(BaseModel):
     
     # Relationships
     tenant = relationship("Tenant", back_populates="users")
+    created_tickets = relationship("SupportTicket", back_populates="created_by", foreign_keys="[SupportTicket.created_by_id]")
+    ticket_comments = relationship("TicketComment", back_populates="user")

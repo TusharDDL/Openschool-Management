@@ -10,9 +10,20 @@ from app.core.config import get_settings
 from app.api.deps import get_db
 from app.models.user import User
 from app.models.enums import UserRole, ROLE_HIERARCHY
-# Moved check_permission here to avoid circular imports
+from app.models.saas import SaaSAdmin, SaaSRole
+# Role hierarchy for SaaS roles
+SAAS_ROLE_HIERARCHY = {
+    SaaSRole.SUPER_ADMIN: 100,
+    SaaSRole.ADMIN: 90,
+    SaaSRole.IMPLEMENTATION: 80,
+    SaaSRole.SUPPORT: 70,
+}
+
 def check_permission(required_role: UserRole, user_role: UserRole) -> bool:
     return ROLE_HIERARCHY[user_role] >= ROLE_HIERARCHY[required_role]
+
+def check_saas_permission(required_role: SaaSRole, user_role: SaaSRole) -> bool:
+    return SAAS_ROLE_HIERARCHY[user_role] >= SAAS_ROLE_HIERARCHY[required_role]
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -49,7 +60,7 @@ def get_password_hash(password: str) -> str:
 async def get_current_user(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
-) -> User:
+) -> User | SaaSAdmin:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -68,26 +79,55 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
+    # Try to find user in both User and SaaSAdmin tables
     user = db.query(User).filter(User.id == int(user_id)).first()
-    if user is None:
-        raise credentials_exception
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
-    
-    return user
+    if user is not None:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user"
+            )
+        return user
+
+    saas_admin = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
+    if saas_admin is not None:
+        if not saas_admin.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive admin"
+            )
+        return saas_admin
+
+    raise credentials_exception
 
 def require_role(required_role: UserRole) -> Callable:
     async def role_checker(
-        current_user: User = Depends(get_current_user)
+        current_user: User | SaaSAdmin = Depends(get_current_user)
     ) -> User:
+        if isinstance(current_user, SaaSAdmin):
+            # SaaS admins have access to everything
+            return current_user
         if not check_permission(required_role, current_user.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role {required_role} or higher required"
+            )
+        return current_user
+    return role_checker
+
+def require_saas_role(required_role: SaaSRole) -> Callable:
+    async def role_checker(
+        current_user: User | SaaSAdmin = Depends(get_current_user)
+    ) -> SaaSAdmin:
+        if not isinstance(current_user, SaaSAdmin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="SaaS admin role required"
+            )
+        if not check_saas_permission(required_role, current_user.role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"SaaS role {required_role} or higher required"
             )
         return current_user
     return role_checker
@@ -98,3 +138,9 @@ require_school_admin = require_role(UserRole.SCHOOL_ADMIN)
 require_teacher = require_role(UserRole.TEACHER)
 require_student = require_role(UserRole.STUDENT)
 require_parent = require_role(UserRole.PARENT)
+
+# SaaS role dependencies
+require_saas_super_admin = require_saas_role(SaaSRole.SUPER_ADMIN)
+require_saas_admin = require_saas_role(SaaSRole.ADMIN)
+require_saas_implementation = require_saas_role(SaaSRole.IMPLEMENTATION)
+require_saas_support = require_saas_role(SaaSRole.SUPPORT)

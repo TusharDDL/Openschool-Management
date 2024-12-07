@@ -1,4 +1,4 @@
-#!/workspace/School-Management/backend/venv/bin/python3.11
+#!/workspace/School-Management2/backend/venv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
