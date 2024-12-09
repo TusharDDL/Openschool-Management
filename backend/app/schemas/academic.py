@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, validator
 from datetime import time, date
 from typing import Optional, List, Dict, Union
-from app.models.academic import WeekDay, GradeSystem, AssessmentType
+from app.models.academic import WeekDay, GradingSystem, AssessmentType
 from app.schemas.base import TimestampSchema
 
 class AcademicYearBase(BaseModel):
@@ -49,14 +49,13 @@ class SectionBase(BaseModel):
     is_active: Optional[bool] = True
 
 class SectionCreate(SectionBase):
-    school_id: int
+    pass
 
 class SectionUpdate(SectionBase):
     pass
 
 class Section(SectionBase, TimestampSchema):
     id: int
-    school_id: int
 
 class SubjectBase(BaseModel):
     name: str
@@ -127,7 +126,7 @@ class TimetableInDB(TimetableBase, TimestampSchema):
 
 class GradingSystemBase(BaseModel):
     name: str
-    type: GradeSystem
+    type: GradingSystem
     scale: Dict[str, Union[float, str]]  # Example: {"A": 90, "B": 80} or {"4.0": "Excellent"}
     passing_grade: float
 

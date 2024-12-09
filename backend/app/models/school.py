@@ -12,5 +12,6 @@ class School(BaseModel):
     
     # Relationships
     tenant = relationship("Tenant", back_populates="schools")
-    support_tickets = relationship("SupportTicket", back_populates="school")
-    onboarding_tasks = relationship("OnboardingTask", back_populates="school")
+    academic_years = relationship("AcademicYear", back_populates="school")
+    classes = relationship("Class", back_populates="school")
+    subjects = relationship("Subject", back_populates="school")
