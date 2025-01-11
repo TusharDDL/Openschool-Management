@@ -1,0 +1,52 @@
+                                      List of databases
+         Name          |  Owner   | Encoding | Collate | Ctype |      Access privileges      
+-----------------------+----------+----------+---------+-------+-----------------------------
+ ai_agents_db          | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres
+ ai_hrms_db            | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | your_username=CTc/postgres
+ fashion_store         | postgres | UTF8     | en_IN   | en_IN | 
+ gvmd                  | _gvm     | UTF8     | en_IN   | en_IN | 
+ healthcare_db         | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres
+ hrms                  | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres
+ hrms_saas             | tushar   | UTF8     | en_IN   | en_IN | 
+ inventory_25_09_2024  | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | tushar=CTc/postgres
+ inventory_db          | postgres | UTF8     | en_IN   | en_IN | 
+ inventory_db_claude   | postgres | UTF8     | en_IN   | en_IN | 
+ mydatabase            | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | mydatabaseuser=CTc/postgres
+ mydb                  | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | johndoe=CTc/postgres
+ mydbformutlpleschemas | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | tushar=CTc/postgres
+ mysaasdb              | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | myuser=CTc/postgres        +
+                       |          |          |         |       | tushar=CTc/postgres
+ postgres              | postgres | UTF8     | en_IN   | en_IN | 
+ saas_cctv_db          | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | tushar=CTc/postgres
+ school_db             | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres
+ school_management     | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres      +
+                       |          |          |         |       | school_admin=CTc/postgres  +
+                       |          |          |         |       | school_user=CTc/postgres
+ september             | postgres | UTF8     | en_IN   | en_IN | 
+ template0             | postgres | UTF8     | en_IN   | en_IN | =c/postgres                +
+                       |          |          |         |       | postgres=CTc/postgres
+ template1             | postgres | UTF8     | en_IN   | en_IN | =c/postgres                +
+                       |          |          |         |       | postgres=CTc/postgres
+ trf_db                | postgres | UTF8     | en_IN   | en_IN | =Tc/postgres               +
+                       |          |          |         |       | postgres=CTc/postgres
+(22 rows)
+

@@ -1,6 +1,8 @@
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.academic_core import AcademicYear, Class, Subject
+from app.models.saas import SupportTicket, OnboardingTask
 
 class School(BaseModel):
     __tablename__ = "schools"

@@ -17,7 +17,7 @@ from app.models.user import User
 router = APIRouter()
 
 # Academic Year routes
-@router.post("/years", response_model=AcademicYear)
+@router.post("/years", response_model=AcademicYear, status_code=status.HTTP_201_CREATED)
 async def create_academic_year(
     data: AcademicYearCreate,
     db: Session = Depends(get_db),
@@ -84,7 +84,7 @@ async def update_academic_year(
     return db_obj
 
 # Class routes
-@router.post("/classes", response_model=Class)
+@router.post("/classes", response_model=Class, status_code=status.HTTP_201_CREATED)
 async def create_class(
     data: ClassCreate,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ async def update_class(
     return db_obj
 
 # Section routes
-@router.post("/sections", response_model=Section)
+@router.post("/sections", response_model=Section, status_code=status.HTTP_201_CREATED)
 async def create_section(
     data: SectionCreate,
     db: Session = Depends(get_db),
@@ -222,7 +222,7 @@ async def update_section(
     return db_obj
 
 # Student Section Assignment routes
-@router.post("/student-sections", response_model=StudentSection)
+@router.post("/student-sections", response_model=StudentSection, status_code=status.HTTP_201_CREATED)
 async def assign_student_to_section(
     data: StudentSectionCreate,
     db: Session = Depends(get_db),
@@ -237,7 +237,7 @@ async def assign_student_to_section(
     )
 
 # Teacher Section Assignment routes
-@router.post("/teacher-sections", response_model=TeacherSection)
+@router.post("/teacher-sections", response_model=TeacherSection, status_code=status.HTTP_201_CREATED)
 async def assign_teacher_to_section(
     data: TeacherSectionCreate,
     db: Session = Depends(get_db),

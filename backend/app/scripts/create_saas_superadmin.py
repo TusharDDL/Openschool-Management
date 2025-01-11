@@ -39,16 +39,11 @@ def create_saas_superadmin(
     
     return admin
 
-def main(
-    username: str = typer.Option(..., prompt=True),
-    email: str = typer.Option(..., prompt=True),
-    full_name: str = typer.Option(..., prompt=True),
-    password: str = typer.Option(..., prompt=True, hide_input=True),
-    confirm_password: str = typer.Option(..., prompt=True, hide_input=True)
-):
-    if password != confirm_password:
-        typer.echo("Error: Passwords don't match")
-        raise typer.Exit(1)
+def main():
+    username = "admin"
+    email = "admin@example.com"
+    password = "Admin123!"
+    full_name = "System Administrator"
     
     db = SessionLocal()
     try:
@@ -61,4 +56,4 @@ def main(
         db.close()
 
 if __name__ == "__main__":
-    typer.run(main)
+    main()

@@ -25,9 +25,9 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
             print("Invalid password")
             return None
             
-        # Convert numeric is_active to string if needed
+        # Convert numeric is_active to boolean if needed
         if isinstance(user.is_active, int):
-            user.is_active = "true" if user.is_active == 1 else "false"
+            user.is_active = bool(user.is_active)
             
         return user
     except Exception as e:
@@ -98,7 +98,7 @@ def create_user(
             hashed_password=get_password_hash(password),
             role=role,
             tenant_id=tenant_id,
-            is_active="true"  # Explicitly set as string
+            is_active=True  # Set as boolean
         )
         
         db.add(user)

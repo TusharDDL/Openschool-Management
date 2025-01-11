@@ -1,7 +1,17 @@
 from enum import Enum
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SQLEnum, Text, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SQLEnum, Text, DateTime, Table
 from sqlalchemy.orm import relationship
-from app.models.base import BaseModel
+from app.models.base import BaseModel, Base
+from app.models.school import School
+from app.models.user import User
+
+# Task dependencies association table
+task_dependencies = Table(
+    'task_dependencies',
+    Base.metadata,
+    Column('task_id', Integer, ForeignKey('onboarding_tasks.id'), primary_key=True),
+    Column('depends_on_id', Integer, ForeignKey('onboarding_tasks.id'), primary_key=True)
+)
 
 class SaaSRole(str, Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
@@ -57,7 +67,7 @@ class SupportTicket(BaseModel):
     resolution_notes = Column(Text)
 
     # Relationships
-    school = relationship("School", back_populates="support_tickets")
+    school = relationship("School", backref="support_tickets")
     created_by = relationship("User", back_populates="created_tickets")
     assigned_to = relationship("SaaSAdmin", back_populates="assigned_tickets")
     comments = relationship("TicketComment", back_populates="ticket")
@@ -89,12 +99,12 @@ class OnboardingTask(BaseModel):
     is_blocking = Column(Boolean, default=False)  # If this task blocks other tasks
 
     # Relationships
-    school = relationship("School", back_populates="onboarding_tasks")
+    school = relationship("School", backref="onboarding_tasks")
     assigned_to = relationship("SaaSAdmin", back_populates="assigned_tasks")
     # Task dependencies relationship
     dependencies = relationship(
         "OnboardingTask",
-        secondary="task_dependencies",
+        secondary=task_dependencies,
         primaryjoin="OnboardingTask.id==task_dependencies.c.task_id",
         secondaryjoin="OnboardingTask.id==task_dependencies.c.depends_on_id",
         backref="dependent_tasks",

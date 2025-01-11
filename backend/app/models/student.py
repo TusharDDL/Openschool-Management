@@ -18,8 +18,8 @@ class BloodGroup(str, Enum):
     AB_POSITIVE = "AB+"
     AB_NEGATIVE = "AB-"
 
-class Student(BaseModel):
-    __tablename__ = "students"
+class StudentProfile(BaseModel):
+    __tablename__ = "student_profiles"
 
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -48,10 +48,10 @@ class Student(BaseModel):
 class Guardian(BaseModel):
     __tablename__ = "guardians"
 
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("student_profiles.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     
-    relationship = Column(String, nullable=False)
+    relation_type = Column(String, nullable=False)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     occupation = Column(String)
@@ -62,13 +62,13 @@ class Guardian(BaseModel):
     is_authorized_pickup = Column(Boolean, default=False)
 
     # Relationships
-    student = relationship("Student", back_populates="guardians")
+    student = relationship("StudentProfile", back_populates="guardians")
     user = relationship("User", back_populates="guardian_profile")
 
 class StudentDocument(BaseModel):
     __tablename__ = "student_documents"
 
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("student_profiles.id"), nullable=False)
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     verified_by = Column(Integer, ForeignKey("users.id"))
     
@@ -81,14 +81,14 @@ class StudentDocument(BaseModel):
     verification_date = Column(Date)
 
     # Relationships
-    student = relationship("Student", back_populates="documents")
+    student = relationship("StudentProfile", back_populates="documents")
     uploader = relationship("User", foreign_keys=[uploaded_by])
     verifier = relationship("User", foreign_keys=[verified_by])
 
 class StudentNote(BaseModel):
     __tablename__ = "student_notes"
 
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("student_profiles.id"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     note_type = Column(String, nullable=False)
@@ -97,5 +97,20 @@ class StudentNote(BaseModel):
     is_confidential = Column(Boolean, default=False)
 
     # Relationships
-    student = relationship("Student", back_populates="notes")
+    student = relationship("StudentProfile", back_populates="notes")
     author = relationship("User", back_populates="student_notes")
+
+class StudentAttendance(BaseModel):
+    __tablename__ = "student_attendance"
+
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("student_profiles.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    status = Column(String, nullable=False)  # present, absent, late, excused
+    remarks = Column(String)
+    marked_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Relationships
+    tenant = relationship("Tenant")
+    student = relationship("StudentProfile")
+    marker = relationship("User", foreign_keys=[marked_by])

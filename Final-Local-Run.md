@@ -44,12 +44,16 @@ This guide provides step-by-step instructions for setting up the School Manageme
 # Linux: sudo service redis-server start
 
 # Create database and user
-sudo -u postgres psql
+# Windows: Run as administrator
+# Mac/Linux: Run as postgres user
+psql -U postgres
 
 # In PostgreSQL prompt:
 CREATE USER school_user WITH PASSWORD 'school_password' SUPERUSER;
 CREATE DATABASE school_management;
 GRANT ALL PRIVILEGES ON DATABASE school_management TO school_user;
+\c school_management
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 \q
 ```
 
@@ -82,14 +86,43 @@ REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=your-secret-key-at-least-32-characters-long
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
+ALGORITHM=HS256
+
+# API Settings
+API_V1_STR=/api/v1
+PROJECT_NAME=School Management System
+VERSION=1.0.0
+
+# CORS Settings
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
 
 # File Storage
 UPLOAD_DIR=uploads
 MAX_UPLOAD_SIZE=5242880
+
+# Email Settings
+SMTP_TLS=True
+SMTP_PORT=587
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-specific-password
+EMAILS_FROM_EMAIL=your-email@gmail.com
+EMAILS_FROM_NAME=School Management System
+
+# First Super Admin
+FIRST_SUPERUSER_EMAIL=admin@example.com
+FIRST_SUPERUSER_PASSWORD=Admin123
 EOL
 
+# Initialize database and create first superuser
+python -m app.initial_setup
+
 # Run database migrations
-PYTHONPATH=/path/to/your/backend alembic upgrade head
+export PYTHONPATH=$PWD
+alembic upgrade head
+
+# Create initial data
+python -m app.scripts.seed_data
 
 # Start backend server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -106,10 +139,28 @@ npm install
 
 # Create .env.local file
 cat > .env.local << EOL
+# API URLs
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8000/ws
 NEXT_PUBLIC_UPLOAD_URL=http://localhost:8000/uploads
+
+# File Upload
 NEXT_PUBLIC_MAX_FILE_SIZE=5242880
+NEXT_PUBLIC_ALLOWED_FILE_TYPES=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+
+# Authentication
+NEXT_PUBLIC_JWT_EXPIRES_IN=30
+NEXT_PUBLIC_REFRESH_TOKEN_EXPIRES_IN=7
+
+# Features
+NEXT_PUBLIC_ENABLE_THEME=true
+NEXT_PUBLIC_ENABLE_RTL=true
+NEXT_PUBLIC_ENABLE_MOCK_API=false
+NEXT_PUBLIC_ENABLE_REDUX_LOGGER=true
+
+# Analytics
+NEXT_PUBLIC_GA_TRACKING_ID=
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
 EOL
 
 # Start frontend development server
@@ -191,6 +242,57 @@ taskkill /PID <PID> /F
 # Linux/Mac
 lsof -i :3000
 kill -9 <PID>
+```
+
+## Running Tests
+
+### Backend Tests
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Activate virtual environment
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate  # Windows
+
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=app
+
+# Run specific test file
+pytest tests/api/test_auth.py
+
+# Run tests with verbose output
+pytest -v
+
+# Run tests and generate HTML coverage report
+pytest --cov=app --cov-report=html
+```
+
+### Frontend Tests
+
+```bash
+# Navigate to project root
+cd ..
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- src/components/auth/LoginForm.test.tsx
+
+# Update snapshots
+npm test -- -u
 ```
 
 ## Development Tools

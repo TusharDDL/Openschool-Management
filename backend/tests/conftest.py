@@ -15,13 +15,14 @@ from app.core.auth import create_access_token, get_password_hash
 
 settings = get_settings()
 
-# Use in-memory SQLite for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+# Use PostgreSQL for tests
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@localhost/school_db_test"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

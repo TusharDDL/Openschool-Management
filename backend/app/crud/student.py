@@ -7,7 +7,7 @@ from app.models.student import (
     StudentProfile, Guardian, StudentDocument,
     StudentNote, StudentAttendance
 )
-from app.models.academic import StudentSection
+from app.models.academic_core import StudentSection
 from app.schemas.student import (
     StudentProfileCreate, StudentProfileUpdate,
     GuardianCreate, GuardianUpdate,

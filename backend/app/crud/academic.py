@@ -23,8 +23,10 @@ from app.core.cache import CacheService
 cache = CacheService()
 
 # Academic Year CRUD
-def create_academic_year(db: Session, tenant_id: int, data: AcademicYearCreate) -> AcademicYear:
-    db_obj = AcademicYear(tenant_id=tenant_id, **data.dict())
+def create_academic_year(db: Session, tenant_id: Optional[int], data: AcademicYearCreate) -> AcademicYear:
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = data_dict.get("tenant_id", tenant_id)
+    db_obj = AcademicYear(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -84,16 +86,23 @@ def update_academic_year(
     return db_obj
 
 # Class CRUD
-def create_class(db: Session, tenant_id: int, data: ClassCreate) -> Class:
+def create_class(db: Session, tenant_id: Optional[int], data: ClassCreate) -> Class:
+    # Use tenant_id from data if available, otherwise use the provided one
+    actual_tenant_id = data.model_dump().get("tenant_id", tenant_id)
+    
     # Verify academic year exists and belongs to tenant
-    academic_year = get_academic_year(db, tenant_id, data.academic_year_id)
+    academic_year = db.query(AcademicYear).filter(
+        AcademicYear.id == data.academic_year_id
+    ).first()
     if not academic_year:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Academic year not found"
         )
     
-    db_obj = Class(tenant_id=tenant_id, **data.dict())
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = actual_tenant_id
+    db_obj = Class(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -166,16 +175,23 @@ def update_class(
     return db_obj
 
 # Section CRUD
-def create_section(db: Session, tenant_id: int, data: SectionCreate) -> Section:
-    # Verify class exists and belongs to tenant
-    class_obj = get_class(db, tenant_id, data.class_id)
+def create_section(db: Session, tenant_id: Optional[int], data: SectionCreate) -> Section:
+    # Use tenant_id from data if available, otherwise use the provided one
+    actual_tenant_id = data.model_dump().get("tenant_id", tenant_id)
+    
+    # Verify class exists
+    class_obj = db.query(Class).filter(
+        Class.id == data.class_id
+    ).first()
     if not class_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Class not found"
         )
     
-    db_obj = Section(tenant_id=tenant_id, **data.dict())
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = actual_tenant_id
+    db_obj = Section(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -290,7 +306,9 @@ def assign_student_to_section(
             detail="Section capacity reached"
         )
     
-    db_obj = StudentSection(tenant_id=tenant_id, **data.dict())
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = tenant_id
+    db_obj = StudentSection(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -325,7 +343,9 @@ def assign_teacher_to_section(
                 detail="Section already has a class teacher"
             )
     
-    db_obj = TeacherSection(tenant_id=tenant_id, **data.dict())
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = tenant_id
+    db_obj = TeacherSection(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -420,38 +440,44 @@ def get_teacher_classes(
 
 # Subject CRUD
 def create_subject(db: Session, tenant_id: int, data: SubjectCreate) -> Subject:
-    db_obj = Subject(tenant_id=tenant_id, **data.model_dump())
+    data_dict = data.model_dump()
+    data_dict["tenant_id"] = tenant_id
+    db_obj = Subject(**data_dict)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
     return db_obj
 
-def get_subject(db: Session, tenant_id: int, subject_id: int) -> Optional[Subject]:
+def get_subject(db: Session, tenant_id: Optional[int], subject_id: int) -> Optional[Subject]:
     cache_key = f"subject:{tenant_id}:{subject_id}"
     cached_data = cache.get(cache_key)
     if cached_data:
-        return Subject(**cached_data)
+        return Subject(**{k: v for k, v in cached_data.items() if not k.startswith('_')})
     
-    db_obj = db.query(Subject).filter(
-        and_(
-            Subject.tenant_id == tenant_id,
-            Subject.id == subject_id
-        )
-    ).first()
+    query = db.query(Subject).filter(Subject.id == subject_id)
+    if tenant_id is not None:
+        query = query.filter(Subject.tenant_id == tenant_id)
+    
+    db_obj = query.first()
     
     if db_obj:
-        cache.set(cache_key, db_obj.__dict__, ttl=3600)
+        # Convert SQLAlchemy model to dict, excluding private attributes
+        obj_dict = {k: v for k, v in db_obj.__dict__.items() if not k.startswith('_')}
+        cache.set(cache_key, obj_dict, ttl=3600)
     
     return db_obj
 
 def get_subjects(
     db: Session,
-    tenant_id: int,
+    tenant_id: Optional[int],
     skip: int = 0,
     limit: int = 100,
     is_active: Optional[bool] = None
 ) -> List[Subject]:
-    query = db.query(Subject).filter(Subject.tenant_id == tenant_id)
+    query = db.query(Subject)
+    
+    if tenant_id is not None:
+        query = query.filter(Subject.tenant_id == tenant_id)
     
     if is_active is not None:
         query = query.filter(Subject.is_active == is_active)

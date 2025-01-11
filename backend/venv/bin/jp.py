@@ -1,4 +1,4 @@
-#!/workspace/School-Management2/backend/venv/bin/python3.12
+#!/workspace/backend/venv/bin/python3.12
 
 import sys
 import json

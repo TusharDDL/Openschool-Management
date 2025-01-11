@@ -1,11 +1,15 @@
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from fastapi import HTTPException, status
 import uuid
 
-from app.models.fee import FeeStructure, FeeDiscount, FeeTransaction, FeeType, PaymentStatus
+from app.models.fee import (
+    FeeStructure, Discount, Payment, FeeType, PaymentStatus, FeeItem,
+    StudentDiscount
+)
+from app.models.user import User
 from app.schemas.fee import (
     FeeStructureCreate,
     FeeStructureUpdate,
@@ -70,18 +74,18 @@ def update_fee_structure(
     db.refresh(fee_structure)
     return fee_structure
 
-def create_fee_discount(
+def create_discount(
     db: Session,
     discount_data: FeeDiscountCreate,
     approved_by: int
-) -> FeeDiscount:
+) -> Discount:
     # Verify fee structure exists
     get_fee_structure(db, discount_data.fee_structure_id)
     
-    discount = FeeDiscount(
+    discount = Discount(
         **discount_data.model_dump(),
         approved_by=approved_by,
-        approved_at=date.today()
+        start_date=date.today()
     )
     
     db.add(discount)
@@ -89,43 +93,47 @@ def create_fee_discount(
     db.refresh(discount)
     return discount
 
-def create_fee_transaction(
+def create_payment(
     db: Session,
-    transaction_data: FeeTransactionCreate
-) -> FeeTransaction:
+    payment_data: FeeTransactionCreate
+) -> Payment:
     # Generate unique transaction ID
     transaction_id = str(uuid.uuid4())
     
-    transaction = FeeTransaction(
-        **transaction_data.model_dump(),
+    payment = Payment(
+        **payment_data.model_dump(),
         transaction_id=transaction_id,
         payment_date=date.today(),
-        status=PaymentStatus.PAID
+        payment_status=PaymentStatus.COMPLETED
     )
     
-    db.add(transaction)
+    db.add(payment)
     db.commit()
-    db.refresh(transaction)
-    return transaction
+    db.refresh(payment)
+    return payment
 
 def get_fee_report(
     db: Session,
     report_params: FeeReport,
     school_id: int
-) -> List[FeeTransaction]:
-    query = db.query(FeeTransaction).join(
+) -> List[Payment]:
+    query = db.query(Payment).join(
+        FeeItem
+    ).join(
         FeeStructure
     ).filter(
         FeeStructure.school_id == school_id,
-        FeeTransaction.payment_date.between(
+        Payment.payment_date.between(
             report_params.start_date,
             report_params.end_date
         )
     )
     
     if report_params.student_id:
-        query = query.filter(
-            FeeTransaction.student_id == report_params.student_id
+        query = query.join(
+            FeeItem
+        ).filter(
+            FeeItem.student_id == report_params.student_id
         )
     
     if report_params.class_id:
@@ -144,33 +152,37 @@ def get_student_pending_fees(
     db: Session,
     student_id: int,
     school_id: int
-) -> List[FeeStructure]:
-    # Get all fee structures applicable to the student
-    fee_structures = db.query(FeeStructure).filter(
+) -> List[FeeItem]:
+    # Get all fee items for the student
+    fee_items = db.query(FeeItem).join(
+        FeeStructure
+    ).filter(
         FeeStructure.school_id == school_id,
-        or_(
-            FeeStructure.class_id == None,
-            FeeStructure.class_id == db.query(User).filter(
-                User.id == student_id
-            ).first().class_id
-        )
+        FeeItem.student_id == student_id,
+        FeeItem.is_paid == False
     ).all()
     
-    # Filter out fully paid fees
-    pending_fees = []
-    for fee in fee_structures:
-        total_paid = db.query(func.sum(FeeTransaction.amount_paid)).filter(
-            FeeTransaction.fee_structure_id == fee.id,
-            FeeTransaction.student_id == student_id,
-            FeeTransaction.status == PaymentStatus.PAID
+    # Calculate remaining amount for each fee item
+    pending_items = []
+    for item in fee_items:
+        total_paid = db.query(func.sum(Payment.amount)).filter(
+            Payment.fee_item_id == item.id,
+            Payment.payment_status == PaymentStatus.COMPLETED
         ).scalar() or 0
         
-        total_discount = db.query(func.sum(FeeDiscount.amount)).filter(
-            FeeDiscount.fee_structure_id == fee.id,
-            FeeDiscount.student_id == student_id
+        total_discount = db.query(func.sum(StudentDiscount.discount.discount_value)).join(
+            StudentDiscount.discount
+        ).filter(
+            StudentDiscount.student_id == student_id,
+            StudentDiscount.is_active == True,
+            StudentDiscount.start_date <= date.today(),
+            or_(
+                StudentDiscount.end_date == None,
+                StudentDiscount.end_date >= date.today()
+            )
         ).scalar() or 0
         
-        if total_paid + total_discount < fee.amount:
-            pending_fees.append(fee)
+        if total_paid + total_discount < item.amount:
+            pending_items.append(item)
     
-    return pending_fees
+    return pending_items

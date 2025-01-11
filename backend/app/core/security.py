@@ -74,38 +74,42 @@ async def get_current_user(
             algorithms=[settings.ALGORITHM]
         )
         user_id: str = payload.get("sub")
+        is_saas_admin: bool = payload.get("is_saas_admin", False)
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
-    # Try to find user in both User and SaaSAdmin tables
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if user is not None:
+    # Try to find user in the appropriate table
+    if is_saas_admin:
+        user = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
+        if user is None:
+            raise credentials_exception
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive admin"
+            )
+    else:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if user is None:
+            raise credentials_exception
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Inactive user"
             )
-        return user
-
-    saas_admin = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
-    if saas_admin is not None:
-        if not saas_admin.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Inactive admin"
-            )
-        return saas_admin
-
-    raise credentials_exception
+    
+    return user
 
 def require_role(required_role: UserRole) -> Callable:
     async def role_checker(
         current_user: User | SaaSAdmin = Depends(get_current_user)
-    ) -> User:
+    ) -> User | SaaSAdmin:
         if isinstance(current_user, SaaSAdmin):
             # SaaS admins have access to everything
+            # Add tenant_id property to SaaS admin for compatibility
+            current_user.tenant_id = None
             return current_user
         if not check_permission(required_role, current_user.role):
             raise HTTPException(

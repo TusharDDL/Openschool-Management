@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, validator
-from datetime import time, date
+from pydantic import BaseModel, Field, validator, ConfigDict
+from datetime import time, date, datetime
 from typing import Optional, List, Dict, Union
-from app.models.academic import WeekDay, GradingSystem, AssessmentType
+from app.models.academic_core import Subject, AcademicYear, Class, Section, StudentSection, TeacherSection
+from app.models.enums import WeekDay, GradingSystem, AssessmentType
 from app.schemas.base import TimestampSchema
 
 class AcademicYearBase(BaseModel):
@@ -17,6 +18,7 @@ class AcademicYearBase(BaseModel):
         return v
 
 class AcademicYearCreate(AcademicYearBase):
+    tenant_id: int
     school_id: int
 
 class AcademicYearUpdate(AcademicYearBase):
@@ -33,6 +35,7 @@ class ClassBase(BaseModel):
     is_active: Optional[bool] = True
 
 class ClassCreate(ClassBase):
+    tenant_id: int
     school_id: int
 
 class ClassUpdate(ClassBase):
@@ -49,7 +52,7 @@ class SectionBase(BaseModel):
     is_active: Optional[bool] = True
 
 class SectionCreate(SectionBase):
-    pass
+    tenant_id: int
 
 class SectionUpdate(SectionBase):
     pass
@@ -65,14 +68,52 @@ class SubjectBase(BaseModel):
     is_active: Optional[bool] = True
 
 class SubjectCreate(SubjectBase):
+    tenant_id: int
     school_id: int
 
 class SubjectUpdate(SubjectBase):
     pass
 
-class Subject(SubjectBase, TimestampSchema):
+class Subject(SubjectBase):
     id: int
     school_id: int
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+    @classmethod
+    def model_validate(cls, obj):
+        if isinstance(obj, dict):
+            return cls(**obj)
+        return cls(
+            id=obj.id,
+            name=obj.name,
+            code=obj.code,
+            description=obj.description,
+            credits=obj.credits,
+            is_active=obj.is_active,
+            school_id=obj.school_id,
+            created_at=obj.created_at.isoformat() if obj.created_at else None,
+            updated_at=obj.updated_at.isoformat() if obj.updated_at else None
+        )
+
+    def model_dump(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "code": self.code,
+            "description": self.description,
+            "credits": self.credits,
+            "is_active": self.is_active,
+            "school_id": self.school_id,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
+        }
+
+    def dict(self):
+        return self.model_dump()
+
+    def json(self):
+        return json.dumps(self.dict())
 
 class StudentSectionBase(BaseModel):
     student_id: int
@@ -80,7 +121,7 @@ class StudentSectionBase(BaseModel):
     roll_number: Optional[str] = None
 
 class StudentSectionCreate(StudentSectionBase):
-    pass
+    tenant_id: int
 
 class StudentSection(StudentSectionBase, TimestampSchema):
     id: int
@@ -92,7 +133,7 @@ class TeacherSectionBase(BaseModel):
     is_class_teacher: bool = False
 
 class TeacherSectionCreate(TeacherSectionBase):
-    pass
+    tenant_id: int
 
 class TeacherSection(TeacherSectionBase, TimestampSchema):
     id: int

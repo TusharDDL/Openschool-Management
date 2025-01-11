@@ -9,6 +9,8 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.auth import oauth2_scheme
 from app.core.cache import CacheService
+from app.models.user import User
+from app.models.saas import SaaSAdmin
 
 settings = get_settings()
 cache = CacheService()
@@ -94,6 +96,7 @@ async def get_current_user(
             algorithms=[settings.ALGORITHM]
         )
         user_id: str = payload.get("sub")
+        is_saas_admin: bool = payload.get("is_saas_admin", False)
         if user_id is None:
             raise credentials_exception
     except JWTError:
@@ -104,9 +107,22 @@ async def get_current_user(
     user = cache.get(cache_key)
     if not user:
         # Query database if not in cache
-        user = db.query(User).filter(User.id == user_id).first()
+        if is_saas_admin:
+            user = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
+        else:
+            user = db.query(User).filter(User.id == int(user_id)).first()
         if user:
-            cache.set(cache_key, user.dict(), ttl=300)  # Cache for 5 minutes
+            if isinstance(user, User):
+                cache.set(cache_key, user.dict(), ttl=300)  # Cache for 5 minutes
+            else:
+                # For SaaSAdmin, store only necessary attributes
+                cache.set(cache_key, {
+                    "id": user.id,
+                    "email": user.email,
+                    "role": user.role,
+                    "is_active": user.is_active,
+                    "tenant_id": None  # SaaS admins don't have a tenant_id
+                }, ttl=300)
     
     if not user:
         raise credentials_exception
