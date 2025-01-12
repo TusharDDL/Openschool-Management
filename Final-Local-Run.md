@@ -174,11 +174,133 @@ npm run dev
 3. API Documentation: http://localhost:8000/docs
 4. Admin Dashboard: http://localhost:3000/dashboard/admin
 
-## Default Credentials
+## User Roles and Access
 
-The system will create a default superuser with the following credentials:
-- Email: admin@example.com
-- Password: admin123
+### 1. SaaS Admin (Super Admin)
+- **Credentials:**
+  - Email: saas.admin@example.com
+  - Password: SaasAdmin123!
+- **Access URL:** http://localhost:3000/dashboard/admin
+- **Features:**
+  - Tenant Management
+  - System Monitoring
+  - Support Tickets
+  - Board Reports
+  - School Registration
+
+### 2. School Admin
+- **Test Credentials:**
+  - Email: school.admin@example.com
+  - Password: SchoolAdmin456!
+- **Access URL:** http://localhost:3000/dashboard/admin
+- **Features:**
+  - Student Management
+  - Academic Management
+  - Fee Management
+  - Staff Management
+  - Reports Generation
+
+### 3. Parent Portal
+- **Test Credentials:**
+  - Email: parent.user@example.com
+  - Password: ParentUser789!
+- **Access URL:** http://localhost:3000/dashboard/parent
+- **Features:**
+  - View Children's Progress
+  - Attendance Tracking
+  - Fee Payment
+  - Parent-Teacher Meetings
+  - Communication
+
+## Multi-Tenant Architecture
+
+The system uses a multi-tenant architecture where:
+1. Each school is a separate tenant
+2. Data is isolated between tenants
+3. SaaS admin manages all tenants
+4. School admin manages their specific tenant
+5. Users (teachers, students, parents) belong to specific tenants
+
+### Tenant Isolation
+- Database level isolation using tenant_id
+- API level access control
+- Role-based permissions within tenants
+- Separate file storage per tenant
+
+## API Integration Guide
+
+### 1. Authentication Flow
+```typescript
+// Login Request
+POST /api/v1/auth/login
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+
+// Response
+{
+  "access_token": "JWT_TOKEN",
+  "token_type": "bearer"
+}
+```
+
+### 2. Role-Based Endpoints
+- SaaS Admin: `/api/v1/tenants`, `/api/v1/monitoring`
+- School Admin: `/api/v1/schools`, `/api/v1/academic`
+- Parent: `/api/v1/parent/children`, `/api/v1/parent/meetings`
+
+### 3. Common Response Format
+```json
+{
+  "data": {},      // Response data
+  "message": "",   // Success/error message
+  "status": 200    // HTTP status code
+}
+```
+
+### 4. Error Handling
+```json
+{
+  "detail": "Error message",
+  "code": "ERROR_CODE",
+  "status": 400
+}
+```
+
+## Workflow Documentation
+
+### 1. School Registration Flow
+1. SaaS admin creates new tenant
+2. School provides registration details
+3. System creates school admin account
+4. School admin sets up:
+   - Academic years
+   - Classes and sections
+   - Staff accounts
+   - Student records
+
+### 2. Parent Onboarding Flow
+1. School admin creates student profile
+2. System generates parent credentials
+3. Parent activates account
+4. Parent links to student(s)
+5. Parent accesses dashboard
+
+### 3. Academic Management Flow
+1. Create academic year
+2. Set up classes and sections
+3. Assign teachers
+4. Create timetables
+5. Track attendance
+6. Record assessments
+
+### 4. Fee Management Flow
+1. Create fee structures
+2. Assign to students
+3. Generate fee items
+4. Process payments
+5. Generate receipts
 
 ## Common Issues and Solutions
 

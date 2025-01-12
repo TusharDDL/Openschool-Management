@@ -1,5 +1,6 @@
 from typing import Optional, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
+from typing import Optional, Union
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -11,6 +12,8 @@ from app.api.deps import get_db
 from app.models.user import User
 from app.models.enums import UserRole, ROLE_HIERARCHY
 from app.models.saas import SaaSAdmin, SaaSRole
+from app.models.student import Guardian
+from sqlalchemy import and_
 # Role hierarchy for SaaS roles
 SAAS_ROLE_HIERARCHY = {
     SaaSRole.SUPER_ADMIN: 100,
@@ -22,21 +25,50 @@ SAAS_ROLE_HIERARCHY = {
 def check_permission(required_role: UserRole, user_role: UserRole) -> bool:
     return ROLE_HIERARCHY[user_role] >= ROLE_HIERARCHY[required_role]
 
-def check_saas_permission(required_role: SaaSRole, user_role: SaaSRole) -> bool:
+async def verify_parent_child_relationship(
+    db: Session,
+    parent_user_id: int,
+    student_id: int
+) -> bool:
+    """Verify that a parent has access to a student's data"""
+    guardian = db.query(Guardian).filter(
+        and_(
+            Guardian.user_id == parent_user_id,
+            Guardian.student_id == student_id
+        )
+    ).first()
+    return guardian is not None
+
+def check_saas_permission(required_role: SaaSRole, user_role: str | SaaSRole) -> bool:
+    # Convert string role to enum if needed
+    if isinstance(user_role, str):
+        user_role = SaaSRole(user_role)
     return SAAS_ROLE_HIERARCHY[user_role] >= SAAS_ROLE_HIERARCHY[required_role]
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
-def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    subject: str,
+    role: Optional[str] = None,
+    tenant_id: Optional[int] = None,
+    email: Optional[str] = None,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "role": role,
+        "tenant_id": tenant_id,
+        "email": email
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -77,30 +109,63 @@ async def get_current_user(
         is_saas_admin: bool = payload.get("is_saas_admin", False)
         if user_id is None:
             raise credentials_exception
-    except JWTError:
+            
+        print(f"Token payload: {payload}")  # Debug log
+    except JWTError as e:
+        print(f"JWT decode error: {str(e)}")  # Debug log
         raise credentials_exception
     
     # Try to find user in the appropriate table
     if is_saas_admin:
-        user = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
-        if user is None:
-            raise credentials_exception
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Inactive admin"
-            )
-    else:
+        print(f"Looking up SaaS admin with ID: {user_id}")  # Debug log
+        admin = db.query(SaaSAdmin).filter(SaaSAdmin.id == int(user_id)).first()
+        if admin is not None:
+            # Convert SQLAlchemy Column values to Python types
+            admin_is_active = bool(str(admin.is_active).lower() in ('true', '1'))
+            if not admin_is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Inactive admin"
+                )
+            print(f"Found SaaS admin: {admin.email}, role: {admin.role}")  # Debug log
+            return admin
+            
+        print("SaaS admin not found, checking regular users...")  # Debug log
         user = db.query(User).filter(User.id == int(user_id)).first()
-        if user is None:
+        if user is None or str(user.role) != 'SUPER_ADMIN':
             raise credentials_exception
-        if not user.is_active:
+            
+        # Convert SQLAlchemy Column values to Python types
+        user_is_active = bool(str(user.is_active).lower() in ('true', '1'))
+        if not user_is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Inactive user"
             )
-    
-    return user
+        print(f"Found super admin user: {user.email}, role: {user.role}")  # Debug log
+        return user
+    else:
+        print(f"Looking up regular user with ID: {user_id}")  # Debug log
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if user is None:
+            print("User not found in database")  # Debug log
+            raise credentials_exception
+            
+        # Convert SQLAlchemy Column values to Python types
+        user_is_active = bool(str(user.is_active).lower() in ('true', '1'))
+        if not user_is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user"
+            )
+        print(f"Found regular user: {user.email}, role: {user.role}")  # Debug log
+        
+        # Add token role and tenant_id from payload
+        user.token_role = payload.get('role')
+        user.token_tenant_id = payload.get('tenant_id')
+        print(f"Added token data - role: {user.token_role}, tenant_id: {user.token_tenant_id}")
+        
+        return user
 
 def require_role(required_role: UserRole) -> Callable:
     async def role_checker(
